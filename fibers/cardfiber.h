@@ -62,6 +62,7 @@ double det4X4(DenseMatrix& matrix);
 bool isInTetElement(const Vector& q, Mesh* mesh, int eleIndex);
 void getCardEleGrads(GridFunction& x, const Vector& q, int eleIndex, Vector& grad_ele, double& xVal);
 void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options);
+void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options, Phi& phi);
 int getCellType(Phi& phi);
 
 void calcGradient(GridFunction& x_psi_ab, GridFunction& x_phi_epi, GridFunction& x_phi_lv, GridFunction& x_phi_rv,
