@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   option.h
  * Author: zhang30
  *
@@ -17,29 +17,30 @@ struct Option{
     bool omar_task;
     bool omar_fast;
     const char *fiblocs;
-    
+
     // verbose print out
     bool verbose;
-    
+
     // Base angle
     double angle;
-    
+
     double a_endo;
     double a_epi;
     double b_endo;
     double b_epi;
-    
+
     // grid spacing
     double dd;
     // conductivity
     double gL; // mS/mm
     double gT; // mS/mm
-    double gN; // mS/mm   
+    double gN; // mS/mm
+    // bath conductivity
+    double gB; // mS/mm
 
     // cutoff for kdtree point range search rangeCutoff=rcut*maxEdgeLen
-    double rcut;  
+    double rcut;
     double maxEdgeLen;
 };
 
 #endif	/* OPTION_H */
-

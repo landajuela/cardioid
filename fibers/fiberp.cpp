@@ -69,10 +69,10 @@ int main(int argc, char *argv[]) {
    MPI_Init(&argc, &argv);
    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-   
+
     // 2. Parse command-line options.
     Option options;
-    
+
     options.mesh_file = "./human.vtk";
     options.order = 1;
     options.static_cond = false;
@@ -81,26 +81,28 @@ int main(int argc, char *argv[]) {
     options.omar_task=false;
     options.omar_fast=false;
     options.fiblocs="";
-    
+
     options.verbose=false;
 
     options.angle=20;
-    
+
     options.a_endo=40;
     options.a_epi=-50;
     options.b_endo=-65;
     options.b_epi=25;
-    
+
     // grid spacing
     options.dd=5;
     // conductivity
     options.gL = 0.0001334177*1000; // mS/mm
     options.gT = 0.0000176062*1000; // mS/mm
-    options.gN = 0.0000176062*1000; // mS/mm   
+    options.gN = 0.0000176062*1000; // mS/mm
+    // bath conductivity
+    options.gB = 1; // ms/mm
 
     // cutoff for kdtree point range search rangeCutoff=rcut*maxEdgeLen
     options.rcut=1.0;
-       
+
     OptionsParser args(argc, argv);
     args.AddOption(&options.mesh_file, "-m", "--mesh",
             "Mesh file to use.");
@@ -114,24 +116,25 @@ int main(int argc, char *argv[]) {
             "Enable or disable GLVis visualization.");
     args.AddOption(&options.omar_task, "-omar", "--omar_task", "-no-omar",
             "--no-omar_task",
-            "Enable or disable Omar task.");   
+            "Enable or disable Omar task.");
     args.AddOption(&options.omar_fast, "-ofast", "--omar_fast", "-no-ofast",
             "--no-omar_fast",
-            "Enable or disable Omar fast task.");      
+            "Enable or disable Omar fast task.");
     args.AddOption(&options.fiblocs, "-fl", "--fiblocs",
-            "Fiber locagtion file to use."); 
+            "Fiber locagtion file to use.");
     args.AddOption(&options.verbose, "-vv", "--verbose", "-novv",
             "--no-verbose",
-            "Enable verbose output.");     
+            "Enable verbose output.");
     args.AddOption(&options.angle, "-al", "--angle", "Base plannar angle.");
     args.AddOption(&options.a_endo, "-ao", "--aendo", "Fiber angle alpha endo.");
     args.AddOption(&options.a_epi, "-ai", "--aepi", "Fiber angle alpha epi.");
     args.AddOption(&options.b_endo, "-bo", "--bendo", "Fiber angle beta endo.");
-    args.AddOption(&options.b_epi, "-bi", "--bepi", "Fiber angle beta epi."); 
+    args.AddOption(&options.b_epi, "-bi", "--bepi", "Fiber angle beta epi.");
     args.AddOption(&options.dd, "-dd", "--dspacing", "Grid spacing for ddcMD gid.");
     args.AddOption(&options.gL, "-gl", "--gL", "Conductivity gL mS/mm.");
     args.AddOption(&options.gT, "-gt", "--gT", "Conductivity gT mS/mm.");
     args.AddOption(&options.gN, "-gn", "--gN", "Conductivity gN mS/mm.");
+    args.AddOption(&options.gB, "-gb", "--gB", "Bath conductivity gB mS/mm.");
     args.AddOption(&options.rcut, "-rc", "--rcut", "rangeCutoff=rcut*maxEdgeLen.");
     args.Parse();
 
@@ -142,7 +145,7 @@ int main(int argc, char *argv[]) {
         MPI_Finalize();
         return 1;
     }
-    
+
     if(options.omar_task && strlen(options.fiblocs)==0){
        if (myid == 0) {
          std::cout << "The program runs Omar task but missing fiber location file!" << std::endl;
@@ -151,7 +154,7 @@ int main(int argc, char *argv[]) {
        MPI_Finalize();
        return 1;
     }
-    
+
     if(options.omar_fast && strlen(options.fiblocs)==0){
        if (myid == 0) {
          std::cout << "The program runs Omar fast task but missing fiber location file!" << std::endl;
@@ -159,8 +162,8 @@ int main(int argc, char *argv[]) {
        }
        MPI_Finalize();
        return 1;
-    }      
-    
+    }
+
     if (myid == 0) {
         args.PrintOptions(cout);
     }
@@ -170,25 +173,25 @@ int main(int argc, char *argv[]) {
 //    fiberAngles(0)=a_endo;
 //    fiberAngles(1)=a_epi;
 //    fiberAngles(2)=b_endo;
-//    fiberAngles(3)=b_epi;    
+//    fiberAngles(3)=b_epi;
     // 2. Read the mesh from the given mesh file. We can handle triangular,
     //    quadrilateral, tetrahedral, hexahedral, surface and volume meshes with
     //    the same code.
     if (myid == 0) {
         cout << "\n1. Read the mesh from the given mesh file ...\n";
         cout.flush();
-    }     
+    }
     Mesh *mesh = new Mesh(options.mesh_file, 1, 1);
-    
+
     vector<Vector> boundingbox;
     // Set the surfaces for the mesh: 0-Apex, 1-Base, 2-EPI, 3-LV, 4-RV.
     if (myid == 0) {
         cout << "\n2. Set the surfaces for the mesh: 0-Apex, 1-Base, 2-EPI, 3-LV, 4-RV ...\n";
         cout.flush();
-    }    
+    }
     setSurfaces(mesh, boundingbox, options.angle, myid); // use 30 degrees for determining the base surface.
 //    for(unsigned i = 0; i < boundingbox.size(); i++) {
-//        Vector vec=boundingbox[i];     
+//        Vector vec=boundingbox[i];
 //        cout << "Bounding Box " << i;
 //        for(int j = 0; j < vec.Size(); j++) {
 //            cout << " " << vec(j);
@@ -201,11 +204,11 @@ int main(int argc, char *argv[]) {
         printSurfVTK(mesh, surf_ofs);
     }
     // 3. Solve the laplacian for four different boundary conditions.
-    
+
     // get the vertex elements arrays.
     vector<vector<int> > vert2Elements;
     getVert2Elements(mesh, vert2Elements);
-    
+
     if (myid == 0) {
         ofstream v2e_ofs("vert2Elements.txt");
         for (unsigned i = 0; i < vert2Elements.size(); i++) {
@@ -217,31 +220,31 @@ int main(int argc, char *argv[]) {
             v2e_ofs << endl;
         }
     }
-      
+
     int bdr_attr_size=mesh->bdr_attributes.Max();
-    Array<int> all_ess_bdr(bdr_attr_size);    
+    Array<int> all_ess_bdr(bdr_attr_size);
     Array<int> nonzero_ess_bdr(bdr_attr_size);
     Array<int> zero_ess_bdr(bdr_attr_size);
     unsigned nv=mesh->GetNV();
-  
+
     // 3a. Base → 1, Apex→ 0, Epi, LV, RV → no flux
      // Mark ALL boundaries as essential. This does not set what the actual Dirichlet
     // values are
     if (myid == 0) {
         cout << "\n3a. Base → 1, Apex→ 0, Epi, LV, RV → no flux...\n";
         cout.flush();
-    } 
+    }
     all_ess_bdr = 1;
     all_ess_bdr[2]=0;
     all_ess_bdr[3]=0;
     all_ess_bdr[4]=0;
-    
-    nonzero_ess_bdr = 0;    
-    nonzero_ess_bdr[1] = 1;   
 
-    zero_ess_bdr = 0;     
+    nonzero_ess_bdr = 0;
+    nonzero_ess_bdr[1] = 1;
+
+    zero_ess_bdr = 0;
     zero_ess_bdr[0] = 1;
-    
+
     string output="psi_ab";
     vector<double> psi_ab;
     vector<Vector> psi_ab_grads;
@@ -249,24 +252,24 @@ int main(int argc, char *argv[]) {
     getVetecesGradients(mesh, x_psi_ab, vert2Elements, psi_ab,psi_ab_grads, output, myid);
     MFEM_ASSERT(psi_ab.size()==nv, "size of psi_ab does not match number of vertices.");
     MFEM_ASSERT(psi_ab_grads.size()==nv, "size of psi_ab_grads does not match number of vertices.");
-    
-    
+
+
     // 3b. Apex, Epi → 1, LV, RV→ 0, Base→ no flux
     if (myid == 0) {
         cout << "\n3b. Apex, Epi → 1, LV, RV→ 0, Base→ no flux...\n";
         cout.flush();
-    }  
+    }
     all_ess_bdr = 1;
     all_ess_bdr[1]=0;
-    
-    nonzero_ess_bdr = 0;    
-    nonzero_ess_bdr[0] = 1;
-    nonzero_ess_bdr[2] = 1;   
 
-    zero_ess_bdr = 0;      
+    nonzero_ess_bdr = 0;
+    nonzero_ess_bdr[0] = 1;
+    nonzero_ess_bdr[2] = 1;
+
+    zero_ess_bdr = 0;
     zero_ess_bdr[3] = 1;
     zero_ess_bdr[4] = 1;
- 
+
     output="phi_epi";
     vector<double> phi_epi;
     vector<Vector> phi_epi_grads;
@@ -276,49 +279,49 @@ int main(int argc, char *argv[]) {
     getVetecesGradients(mesh, x_phi_epi, vert2Elements, phi_epi,phi_epi_grads, output,myid);
     MFEM_ASSERT(phi_epi.size()==nv, "size of phi_epi does not match number of vertices.");
     MFEM_ASSERT(phi_epi_grads.size()==nv, "size of phi_epi_grads does not match number of vertices.");
-    
+
     //3c. LV → 1, Apex, Epi, RV→ 0, Base→ no flux
     if (myid == 0) {
         cout << "\n3c. LV → 1, Apex, Epi, RV→ 0, Base→ no flux...\n";
         cout.flush();
-    } 
+    }
     all_ess_bdr = 1;
     all_ess_bdr[1]=0;
-    
-    nonzero_ess_bdr = 0;    
-    nonzero_ess_bdr[3] = 1;   
 
-    zero_ess_bdr = 0;      
+    nonzero_ess_bdr = 0;
+    nonzero_ess_bdr[3] = 1;
+
+    zero_ess_bdr = 0;
     zero_ess_bdr[0] = 1;
     zero_ess_bdr[2] = 1;
     zero_ess_bdr[4] = 1;
- 
+
     output="phi_lv";
     vector<double> phi_lv;
     vector<Vector> phi_lv_grads;
 
     //laplace(mesh, vert2Elements, phi_lv, phi_lv_grads, all_ess_bdr, nonzero_ess_bdr, zero_ess_bdr, output, order, static_cond);
     GridFunction x_phi_lv=laplace(mesh, all_ess_bdr, nonzero_ess_bdr, zero_ess_bdr, options,myid);
-    getVetecesGradients(mesh, x_phi_lv, vert2Elements, phi_lv,phi_lv_grads, output,myid);    
+    getVetecesGradients(mesh, x_phi_lv, vert2Elements, phi_lv,phi_lv_grads, output,myid);
     MFEM_ASSERT(phi_lv.size()==nv, "size of phi_lv does not match number of vertices.");
-    MFEM_ASSERT(phi_lv_grads.size()==nv, "size of phi_lv_grads does not match number of vertices.");        
-    
+    MFEM_ASSERT(phi_lv_grads.size()==nv, "size of phi_lv_grads does not match number of vertices.");
+
     //3d. RV → 1, Apex, Epi, LV→ 0, Base→ no flux
     if (myid == 0) {
         cout << "\n3d. RV → 1, Apex, Epi, LV→ 0, Base→ no flux...\n";
         cout.flush();
-    }     
+    }
     all_ess_bdr = 1;
     all_ess_bdr[1]=0;
-    
-    nonzero_ess_bdr = 0;    
-    nonzero_ess_bdr[4] = 1;   
 
-    zero_ess_bdr = 0;      
+    nonzero_ess_bdr = 0;
+    nonzero_ess_bdr[4] = 1;
+
+    zero_ess_bdr = 0;
     zero_ess_bdr[0] = 1;
     zero_ess_bdr[2] = 1;
     zero_ess_bdr[3] = 1;
- 
+
     output="phi_rv";
     vector<double> phi_rv;
     vector<Vector> phi_rv_grads;
@@ -344,22 +347,22 @@ int main(int argc, char *argv[]) {
     if (myid == 0) {
         cout << "\n4. Working on fiber angles with the bislerp method...\n";
         cout.flush();
-    }    
-    vector<DenseMatrix> QPfibVectors;   
-    genfiber(QPfibVectors, psi_ab, psi_ab_grads, phi_epi, phi_epi_grads, 
+    }
+    vector<DenseMatrix> QPfibVectors;
+    genfiber(QPfibVectors, psi_ab, psi_ab_grads, phi_epi, phi_epi_grads,
         phi_lv, phi_lv_grads, phi_rv, phi_rv_grads, options);
-    
+
     MPI_Barrier(MPI_COMM_WORLD);
-    if (myid == 0) {    
+    if (myid == 0) {
         cout << "\n5. Calculate fiber on the nodes ...\n";
         cout.flush();
-    }     
-    calcNodeFiberP(QPfibVectors, num_procs, myid);     
-    
+    }
+    calcNodeFiberP(QPfibVectors, num_procs, myid);
+
     vector<Vector> fvectors;
     vector<Vector> svectors;
     vector<Vector> tvectors;
-    
+
     for(unsigned i=0; i< QPfibVectors.size(); i++){
         vector<Vector> qpVecs;
         for(int j=0; j<3; j++){
@@ -383,25 +386,25 @@ int main(int argc, char *argv[]) {
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    
+
     if(options.omar_fast){
       if (myid == 0) {
          cout << "\n6. Get Omar's rotation matrix in fast way ...\n";
       }
       getRotMatrixFastp(mesh, x_psi_ab, x_phi_epi, x_phi_lv, x_phi_rv,
-          vert2Elements, options, num_procs, myid);  
-      
+          vert2Elements, options, num_procs, myid);
+
       delete mesh;
-      MPI_Finalize(); 
-      return 0;       
-    }    
+      MPI_Finalize();
+      return 0;
+    }
 
     options.maxEdgeLen=getMaxEdgeLen(mesh);
     if (myid == 0) {
         cout << "\n\tThe maximum edge length in the mesh is "<< options.maxEdgeLen <<"\n";
-        cout.flush();     
+        cout.flush();
     }
-    
+
     if (myid == 0) {
         cout << "\n6. Start to build k-D tree for the mesh...\n";
         cout.flush();
@@ -416,9 +419,9 @@ int main(int argc, char *argv[]) {
        }
        getRotMatrixp(mesh, x_psi_ab, x_phi_epi, x_phi_lv, x_phi_rv,
           kdtree, vert2Elements, options, num_procs, myid);
-       
-    }    
-        
+
+    }
+
     if (myid == 0) {
         cout << "\n7.b Get cardioid point gradients ...\n";
         cout.flush();
@@ -429,11 +432,10 @@ int main(int argc, char *argv[]) {
 //    conduct(2)=gN;
     getCardGradientsp(mesh, x_psi_ab, x_phi_epi, x_phi_lv, x_phi_rv,
         kdtree, vert2Elements, boundingbox, options, num_procs, myid);
-    
+
     delete mesh;
 
-    MPI_Finalize(); 
-    
+    MPI_Finalize();
+
     return 0;
 }
-
