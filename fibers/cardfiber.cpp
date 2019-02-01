@@ -315,9 +315,9 @@ void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options, Phi& phi){
       conduct(2)=options.gN;
     }
 
-    DenseMatrix diag(dim3, dim3);
+    DenseMatrix diag(dim, dim);
     //Get Diag (conductivity)).
-    for(int i=0; i<dim3; i++){
+    for(int i=0; i<dim; i++){
         Vector vec(3);
         vec=0.0;
         vec(i)=conduct(i);
