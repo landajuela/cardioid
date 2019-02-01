@@ -294,16 +294,19 @@ void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options){
 void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options, Phi& phi){
     Vector conduct(3);
 
-    //Infer gi and ge to keep the same proportion as g in Niederer SA et al - 2011
-    double gLi = (options.gL*0.17)/0.133418;
-    double gLe = (options.gL*0.62)/0.133418;
-    double gTi = (options.gT*0.019)/0.0176062;
-    double gTe = (options.gT*0.24)/0.0176062;
-    double gNi = (options.gN*0.019)/0.0176062;
-    double gNe = (options.gN*0.24)/0.0176062;
-
+    // Lambda is the average of the extra to intra ratios in
+    // Directional differences of impulse spread in trabecular muscle from mammalian - Clerc - 1977
+    double lambda = 8.1;
+    
+    double gLi = ((1+lambda)/lambda)*options.gL;
+    double gLe = (1+lambda)*options.gL;
+    double gTi = ((1+lambda)/lambda)*options.gT;
+    double gTe = (1+lambda)*options.gT;
+    double gNi = ((1+lambda)/lambda)*options.gN;
+    double gNe = (1+lambda)*options.gN;
+   
     double gBath = options.gB;
-    double scale = 1.2;
+    double scale = 2.5;
 
     if(phi.epi>0.66 || phi.lv>0.66 || phi.rv>0.66){
       conduct(0)=scale*(gBath*gLi)/(gBath + gLi);
