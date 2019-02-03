@@ -7,7 +7,6 @@
 #include "Tuple.hh"
 #include "SymmetricTensor.hh"
 #include "IndexToTuple.hh"
-#include "three_algebra.h"
 
 class Conductivity;
 
@@ -56,7 +55,7 @@ class Anatomy
    double& offset_y();
    double& offset_z();
 
-   THREE_VECTOR pointFromGid(unsigned ii) const;
+   std::vector<double> pointFromGid(unsigned ii) const;
 
  private:
    unsigned nx_, ny_, nz_;
@@ -114,18 +113,16 @@ inline double& Anatomy::offset_x() {return offset_x_;}
 inline double& Anatomy::offset_y() {return offset_y_;}
 inline double& Anatomy::offset_z() {return offset_z_;}
 
-inline THREE_VECTOR Anatomy::pointFromGid(unsigned ii) const
+inline std::vector<double> Anatomy::pointFromGid(unsigned ii) const
 {
-   int x=ii%nx_;
-   int y=(ii/nx_) %ny_;
-   int z=ii/nx_/ny_;
+   Tuple gt = i2t_(cell_[ii].gid_);
 
    // We retrive the center of the cell as a 3D point
-   double xcoor=(x + 0.5)*dx_ + offset_x_;
-   double ycoor=(y + 0.5)*dy_ + offset_y_;
-   double zcoor=(z + 0.5)*dz_ + offset_z_;
+   double xcoor=(gt.x() + 0.5)*dx_ + offset_x_;
+   double ycoor=(gt.y() + 0.5)*dy_ + offset_y_;
+   double zcoor=(gt.z() + 0.5)*dz_ + offset_z_;
 
-   THREE_VECTOR point = { xcoor, ycoor, zcoor };
+   std::vector<double> point = {xcoor, ycoor, zcoor};
 
    return point;
 }

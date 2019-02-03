@@ -1,7 +1,6 @@
 #include "BoxStimulus.hh"
 #include "Anatomy.hh"
 #include "DeviceFor.hh"
-#include "three_algebra.h"
 #include <cmath>
 #include <mpi.h>
 #include <iostream>
@@ -25,10 +24,10 @@ BoxStimulus::BoxStimulus(const BoxStimulusParms& p, const Anatomy& anatomy, Puls
           stimList.push_back(ii);
      } else {
        double len = p.length/2;
-       THREE_VECTOR point = anatomy.pointFromGid(ii);
-       if (fabs(point.x - p.x) < len &&
-          fabs(point.y - p.y) < len &&
-          fabs(point.z - p.z) < len )
+       std::vector<double> point = anatomy.pointFromGid(ii);
+       if (fabs(point[0] - p.x) < len &&
+          fabs(point[1] - p.y) < len &&
+          fabs(point[2] - p.z) < len )
           stimList.push_back(ii);
      }
    }
