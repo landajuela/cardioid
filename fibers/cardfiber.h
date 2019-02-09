@@ -43,6 +43,7 @@ struct anatomy{
 };
 
 struct Phi{
+    double ab;
     double epi;
     double lv;
     double rv;

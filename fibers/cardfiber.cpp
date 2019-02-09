@@ -93,7 +93,7 @@ bool isInTetElement(const Vector& q, Mesh* mesh, int eleIndex){
         const double* coord=mesh->GetVertex(vert);
        for(int j=0; j<dim; j++){
            vec(j)=coord[j];
-       }        
+       }
         vec(dim)=1.0;
         VV.push_back(vec);
     }
@@ -153,6 +153,7 @@ void calcGradient(GridFunction& x_psi_ab, GridFunction& x_phi_epi, GridFunction&
     double phi_rv=0.0;
     getCardEleGrads(x_phi_rv, q, eleIndex, phi_rv_vec, phi_rv);
 
+    phi.ab=psi_ab;
     phi.epi=phi_epi;
     phi.lv=phi_lv;
     phi.rv=phi_rv;
@@ -282,7 +283,7 @@ void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options){
         vec(i)=conduct(i);
         diag.SetCol(i, vec);
     }
-    
+
     DenseMatrix tmp(dim, dim);
     Mult(Q, diag, tmp);
     DenseMatrix QT=Q;
@@ -297,14 +298,14 @@ void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options, Phi& phi){
     // Lambda is the average of the extra to intra ratios in
     // Directional differences of impulse spread in trabecular muscle from mammalian - Clerc - 1977
     double lambda = 8.1;
-    
+
     double gLi = ((1+lambda)/lambda)*options.gL;
     double gLe = (1+lambda)*options.gL;
     double gTi = ((1+lambda)/lambda)*options.gT;
     double gTe = (1+lambda)*options.gT;
     double gNi = ((1+lambda)/lambda)*options.gN;
     double gNe = (1+lambda)*options.gN;
-   
+
     double gBath = options.gB;
     double scale = 3.9;
 
@@ -338,5 +339,6 @@ void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options, Phi& phi){
 int getCellType(Phi& phi){
     if(phi.epi>0.66) return 102;                // EPI_CELL=102
     if(phi.lv>0.66 || phi.rv >0.66) return 100; // ENDO_CELL=100
+    if(phi.ab<0.9) return 100;
     return 101;                                 // M_CELL=101
 }
