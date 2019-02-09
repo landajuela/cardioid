@@ -306,7 +306,7 @@ void calcSigma(DenseMatrix& Sigma, DenseMatrix& Q, Option& options, Phi& phi){
     double gNe = (1+lambda)*options.gN;
    
     double gBath = options.gB;
-    double scale = 2.5;
+    double scale = 3.9;
 
     if(phi.epi>0.66 || phi.lv>0.66 || phi.rv>0.66){
       conduct(0)=scale*(gBath*gLi)/(gBath + gLi);
